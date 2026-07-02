@@ -46,13 +46,15 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'https://yourdomain.com',
-      'https://www.yourdomain.com'
-    ];
+      'https://www.yourdomain.com',
+      'https://jewels-and-you-sne7.vercel.app',
+      'https://jewels-and-you.vercel.app'
+    ].filter(Boolean);
     
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
