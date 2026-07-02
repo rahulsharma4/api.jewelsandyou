@@ -6,8 +6,5 @@ npm-debug.log*
 .env
 .env.local
 
-# uploads
-uploads/
-
 # misc
 .DS_Store
