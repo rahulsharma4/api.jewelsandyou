@@ -1,0 +1,13 @@
+# dependencies
+node_modules/
+npm-debug.log*
+
+# environment variables
+.env
+.env.local
+
+# uploads
+uploads/
+
+# misc
+.DS_Store
