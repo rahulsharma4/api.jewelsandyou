@@ -62,14 +62,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Add CORS headers for static files
+// Add Cache headers for static files
 app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
   next();
 });
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/assets', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
