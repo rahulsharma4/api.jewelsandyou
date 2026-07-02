@@ -129,6 +129,15 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/contact', require('./routes/contact'));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to JewelsAndYou API',
+    status: 'Server is running normally',
+    docs: 'API endpoints are available under /api'
+  });
+});
+
 // 404 handler for undefined routes
 app.use((req, res) => {
   res.status(404).json({ 
