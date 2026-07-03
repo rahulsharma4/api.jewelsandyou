@@ -46,7 +46,7 @@ router.get('/products', adminAuth, async (req, res) => {
 });
 
 // Create product
-router.post('/products', adminAuth, upload.single('image'), async (req, res) => {
+router.post('/products', adminAuth, upload.array('images', 5), async (req, res) => {
   try {
     console.log('\n🔍 ADMIN PRODUCT CREATION');
     console.log('='.repeat(30));
@@ -55,11 +55,12 @@ router.post('/products', adminAuth, upload.single('image'), async (req, res) => 
     console.log('Headers:', req.headers);
     
     const productData = req.body;
-    if (req.file) {
-      productData.image = req.file.filename;
-      console.log('✅ Image uploaded:', req.file.filename);
+    if (req.files && req.files.length > 0) {
+      productData.images = req.files.map(f => f.filename);
+      productData.image = req.files[0].filename;
+      console.log('✅ Images uploaded:', productData.images);
     } else {
-      console.log('⚠️ No image uploaded');
+      console.log('⚠️ No images uploaded');
     }
     
     console.log('Product data:', productData);
@@ -76,7 +77,7 @@ router.post('/products', adminAuth, upload.single('image'), async (req, res) => 
 });
 
 // Update product
-router.put('/products/:id', adminAuth, upload.single('image'), async (req, res) => {
+router.put('/products/:id', adminAuth, upload.array('images', 5), async (req, res) => {
   try {
     console.log('\n🔍 ADMIN PRODUCT UPDATE');
     console.log('='.repeat(30));
@@ -85,18 +86,23 @@ router.put('/products/:id', adminAuth, upload.single('image'), async (req, res) 
     console.log('File:', req.file);
     
     const productData = req.body;
-    if (req.file) {
-      // New image uploaded
-      productData.image = req.file.filename;
-      console.log('✅ New image uploaded:', req.file.filename);
-    } else if (req.body.currentImage) {
-      // Preserve existing image
-      productData.image = req.body.currentImage;
-      console.log('✅ Preserving existing image:', req.body.currentImage);
+    if (req.files && req.files.length > 0) {
+      // New images uploaded
+      productData.images = req.files.map(f => f.filename);
+      productData.image = req.files[0].filename;
+      console.log('✅ New images uploaded:', productData.images);
     } else {
-      console.log('⚠️ No image provided - keeping existing image');
-      // Don't update the image field
-      delete productData.image;
+      console.log('⚠️ No new images provided - keeping existing images');
+      if (req.body.currentImage) {
+        productData.image = req.body.currentImage;
+      }
+      if (req.body.currentImages) {
+        try {
+          productData.images = JSON.parse(req.body.currentImages);
+        } catch(e) {
+          productData.images = [req.body.currentImage];
+        }
+      }
     }
     
     const product = await Product.findByIdAndUpdate(
@@ -475,6 +481,36 @@ router.put('/contacts/:id/status', adminAuth, async (req, res) => {
     );
     if (!contact) return res.status(404).json({ message: 'Contact not found' });
     res.json(contact);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Rename Category
+router.put('/categories/rename', adminAuth, async (req, res) => {
+  try {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName) return res.status(400).json({ message: 'Missing names' });
+    const result = await Product.updateMany(
+      { category: oldName },
+      { $set: { category: newName } }
+    );
+    res.json({ message: 'Category updated successfully', matched: result.matchedCount, modified: result.modifiedCount });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Rename Material
+router.put('/materials/rename', adminAuth, async (req, res) => {
+  try {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName) return res.status(400).json({ message: 'Missing names' });
+    const result = await Product.updateMany(
+      { material: oldName },
+      { $set: { material: newName } }
+    );
+    res.json({ message: 'Material updated successfully', matched: result.matchedCount, modified: result.modifiedCount });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
