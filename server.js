@@ -22,7 +22,9 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // Temporarily disable mongoSanitize to fix compatibility issue
 // app.use(mongoSanitize());
@@ -62,21 +64,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Add Cache headers for static files
-app.use('/uploads', (req, res, next) => {
-  res.header('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-  next();
-});
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-app.use('/assets', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-  next();
-});
-
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -91,7 +78,7 @@ app.use('/uploads', (req, res, next) => {
   res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
   res.header('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
   next();
-}, express.static('uploads'));
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Serve static files from frontend Assets directory with CORS headers
 app.use('/assets', (req, res, next) => {
