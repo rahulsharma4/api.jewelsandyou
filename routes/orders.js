@@ -31,7 +31,7 @@ router.post('/', auth, async (req, res) => {
       });
     }
     
-    const shippingCost = shippingMethod === 'express' ? 15 : 0;
+    const shippingCost = shippingMethod === 'express' ? 150 : 0;
     const total = subtotal + shippingCost;
     
     const order = new Order({
