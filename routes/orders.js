@@ -6,6 +6,8 @@ const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 
+const { applyDynamicPrices } = require('../utils/priceCalculator');
+
 // Create order
 router.post('/', auth, async (req, res) => {
   try {
@@ -13,10 +15,20 @@ router.post('/', auth, async (req, res) => {
     
     // Calculate totals
     let subtotal = 0;
+    const itemsWithPrices = [];
     for (const item of items) {
       const product = await Product.findById(item.product);
       if (!product) return res.status(400).json({ message: 'Product not found' });
+      
+      // Calculate dynamic price
+      await applyDynamicPrices(product);
+      
       subtotal += product.price * item.quantity;
+      itemsWithPrices.push({
+        product: item.product,
+        quantity: item.quantity,
+        price: product.price
+      });
     }
     
     const shippingCost = shippingMethod === 'express' ? 15 : 0;
@@ -24,11 +36,7 @@ router.post('/', auth, async (req, res) => {
     
     const order = new Order({
       user: req.user.id,
-      items: items.map(item => ({
-        product: item.product,
-        quantity: item.quantity,
-        price: item.price
-      })),
+      items: itemsWithPrices,
       shippingAddress,
       paymentMethod,
       paymentInfo,
@@ -64,6 +72,13 @@ router.get('/', auth, async (req, res) => {
     const orders = await Order.find({ user: req.user.id })
       .populate('items.product')
       .sort({ createdAt: -1 });
+      
+    for (const order of orders) {
+      if (order.items) {
+        const products = order.items.map(item => item.product).filter(Boolean);
+        await applyDynamicPrices(products);
+      }
+    }
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -81,6 +96,10 @@ router.get('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
     
+    if (order.items) {
+      const products = order.items.map(item => item.product).filter(Boolean);
+      await applyDynamicPrices(products);
+    }
     res.json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -3,11 +3,23 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const { applyDynamicPrices } = require('../utils/priceCalculator');
 
 // Get user cart
 router.get('/', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate('cart.product');
+    if (user && user.cart) {
+      const products = user.cart.map(item => item.product).filter(Boolean);
+      await applyDynamicPrices(products);
+      
+      // Update cart item price dynamically too so that checkout calculations are in sync
+      user.cart.forEach(item => {
+        if (item.product) {
+          item.price = item.product.price;
+        }
+      });
+    }
     res.json(user.cart || []);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -41,6 +53,16 @@ router.post('/add', auth, async (req, res) => {
     
     await user.save();
     await user.populate('cart.product');
+    
+    if (user.cart) {
+      const products = user.cart.map(item => item.product).filter(Boolean);
+      await applyDynamicPrices(products);
+      user.cart.forEach(item => {
+        if (item.product) {
+          item.price = item.product.price;
+        }
+      });
+    }
     res.json(user.cart);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -67,6 +89,16 @@ router.put('/update/:productId', auth, async (req, res) => {
     
     await user.save();
     await user.populate('cart.product');
+    
+    if (user.cart) {
+      const products = user.cart.map(item => item.product).filter(Boolean);
+      await applyDynamicPrices(products);
+      user.cart.forEach(item => {
+        if (item.product) {
+          item.price = item.product.price;
+        }
+      });
+    }
     res.json(user.cart);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -82,6 +114,16 @@ router.delete('/remove/:productId', auth, async (req, res) => {
     user.cart = user.cart.filter(item => item.product.toString() !== productId);
     await user.save();
     await user.populate('cart.product');
+    
+    if (user.cart) {
+      const products = user.cart.map(item => item.product).filter(Boolean);
+      await applyDynamicPrices(products);
+      user.cart.forEach(item => {
+        if (item.product) {
+          item.price = item.product.price;
+        }
+      });
+    }
     res.json(user.cart);
   } catch (error) {
     res.status(500).json({ message: error.message });

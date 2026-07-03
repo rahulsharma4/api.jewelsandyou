@@ -6,6 +6,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Contact = require('../models/Contact');
 const { adminAuth } = require('../middleware/auth');
+const { applyDynamicPrices } = require('../utils/priceCalculator');
 
 // Get all products (admin)
 router.get('/products', adminAuth, async (req, res) => {
@@ -28,6 +29,8 @@ router.get('/products', adminAuth, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
+    
+    await applyDynamicPrices(products);
     
     const total = await Product.countDocuments(query);
     

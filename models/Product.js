@@ -19,6 +19,10 @@ const productSchema = new mongoose.Schema({
   }],
   stock: { type: Number, default: 0 },
   featured: { type: Boolean, default: false },
+  priceType: { type: String, enum: ['fixed', 'weight-based'], default: 'fixed' },
+  weight: { type: Number, default: 0 },
+  metalType: { type: String, enum: ['Gold 24K', 'Gold 22K', 'Gold 18K', 'Silver', 'Platinum', 'None'], default: 'None' },
+  makingCharge: { type: Number, default: 0 },
   specifications: {
     material: String,
     stoneType: String,

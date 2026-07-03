@@ -3,6 +3,7 @@ const router = express.Router();
 const Product = require('../models/Product');
 const upload = require('../middleware/upload');
 const { auth } = require('../middleware/auth');
+const { applyDynamicPrices } = require('../utils/priceCalculator');
 
 // Get all products
 router.get('/', async (req, res) => {
@@ -32,6 +33,9 @@ router.get('/', async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Apply dynamic gold/silver rates pricing
+    await applyDynamicPrices(products);
+
     const total = await Product.countDocuments(query);
 
     res.json({
@@ -50,6 +54,7 @@ router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
+    await applyDynamicPrices(product);
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -67,6 +72,7 @@ router.get('/:id/related', async (req, res) => {
       _id: { $ne: product._id }
     }).limit(4);
 
+    await applyDynamicPrices(related);
     res.json(related);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -87,6 +93,7 @@ router.get('/categories/list', async (req, res) => {
 router.get('/featured/list', async (req, res) => {
   try {
     const products = await Product.find({ featured: true }).limit(6);
+    await applyDynamicPrices(products);
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -186,6 +193,8 @@ router.get('/search/:query', async (req, res) => {
       .sort(sortOption)
       .limit(limit * 1)
       .skip((page - 1) * limit);
+    
+    await applyDynamicPrices(products);
     
     const total = await Product.countDocuments(searchQuery);
     

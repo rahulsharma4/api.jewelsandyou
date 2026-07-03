@@ -126,6 +126,7 @@ app.use('/api/cart', require('./routes/cart'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/contact', require('./routes/contact'));
+app.use('/api/settings', require('./routes/settings'));
 
 // Root endpoint
 app.get('/', (req, res) => {
