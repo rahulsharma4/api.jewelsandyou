@@ -29,7 +29,7 @@ router.get('/', auth, async (req, res) => {
 // Add item to cart
 router.post('/add', auth, async (req, res) => {
   try {
-    const { productId, quantity = 1 } = req.body;
+    const { productId, quantity = 1, color } = req.body;
     const user = await User.findById(req.user.id);
     
     // Check if product exists
@@ -38,8 +38,11 @@ router.post('/add', auth, async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     
-    // Check if item already in cart
-    const existingItem = user.cart.find(item => item.product.toString() === productId);
+    // Check if item already in cart with same product and color
+    const existingItem = user.cart.find(item => 
+      item.product.toString() === productId && 
+      (item.color || '') === (color || '')
+    );
     
     if (existingItem) {
       existingItem.quantity += quantity;
@@ -47,7 +50,8 @@ router.post('/add', auth, async (req, res) => {
       user.cart.push({
         product: productId,
         quantity,
-        price: product.price
+        price: product.price,
+        color: color || ''
       });
     }
     
@@ -73,16 +77,21 @@ router.post('/add', auth, async (req, res) => {
 router.put('/update/:productId', auth, async (req, res) => {
   try {
     const { productId } = req.params;
-    const { quantity } = req.body;
+    const { quantity, color } = req.body;
     const user = await User.findById(req.user.id);
     
-    const cartItem = user.cart.find(item => item.product.toString() === productId);
+    const cartItem = user.cart.find(item => 
+      item.product.toString() === productId && 
+      (item.color || '') === (color || '')
+    );
     if (!cartItem) {
       return res.status(404).json({ message: 'Item not found in cart' });
     }
     
     if (quantity <= 0) {
-      user.cart = user.cart.filter(item => item.product.toString() !== productId);
+      user.cart = user.cart.filter(item => 
+        !(item.product.toString() !== productId || (item.color || '') !== (color || ''))
+      );
     } else {
       cartItem.quantity = quantity;
     }
@@ -109,9 +118,12 @@ router.put('/update/:productId', auth, async (req, res) => {
 router.delete('/remove/:productId', auth, async (req, res) => {
   try {
     const { productId } = req.params;
+    const { color } = req.query;
     const user = await User.findById(req.user.id);
     
-    user.cart = user.cart.filter(item => item.product.toString() !== productId);
+    user.cart = user.cart.filter(item => 
+      !(item.product.toString() === productId && (item.color || '') === (color || ''))
+    );
     await user.save();
     await user.populate('cart.product');
     

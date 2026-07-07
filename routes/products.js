@@ -83,7 +83,10 @@ router.get('/:id/related', async (req, res) => {
 router.get('/categories/list', async (req, res) => {
   try {
     const categories = await Product.distinct('category');
-    res.json(categories);
+    const filtered = categories
+      .map(cat => cat ? cat.trim() : '')
+      .filter(cat => cat && cat.length > 0);
+    res.json(filtered);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -175,7 +178,8 @@ router.get('/search/:query', async (req, res) => {
       $or: [
         { name: { $regex: query, $options: 'i' } },
         { description: { $regex: query, $options: 'i' } },
-        { category: { $regex: query, $options: 'i' } }
+        { category: { $regex: query, $options: 'i' } },
+        { material: { $regex: query, $options: 'i' } }
       ]
     };
     

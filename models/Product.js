@@ -7,8 +7,10 @@ const productSchema = new mongoose.Schema({
   description: { type: String, required: true },
   category: { type: String, default: 'Uncategorized' },
   material: { type: String },
+  color: { type: String },
   image: { type: String, default: 'placeholder.jpg' },
   images: [String],
+  imageColors: [String],
   rating: { type: Number, default: 0 },
   reviews: [{
     user: String,

@@ -45,6 +45,18 @@ router.get('/products', adminAuth, async (req, res) => {
   }
 });
 
+// Update product stock (admin)
+router.patch('/products/:id/stock', adminAuth, async (req, res) => {
+  try {
+    const { stock } = req.body;
+    const product = await Product.findByIdAndUpdate(req.params.id, { stock }, { new: true });
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Create product
 router.post('/products', adminAuth, upload.array('images', 5), async (req, res) => {
   try {
@@ -61,6 +73,14 @@ router.post('/products', adminAuth, upload.array('images', 5), async (req, res) 
       console.log('✅ Images uploaded:', productData.images);
     } else {
       console.log('⚠️ No images uploaded');
+    }
+
+    if (req.body.imageColors) {
+      try {
+        productData.imageColors = JSON.parse(req.body.imageColors);
+      } catch (e) {
+        productData.imageColors = [];
+      }
     }
     
     console.log('Product data:', productData);
@@ -102,6 +122,15 @@ router.put('/products/:id', adminAuth, upload.array('images', 5), async (req, re
         } catch(e) {
           productData.images = [req.body.currentImage];
         }
+      }
+    }
+
+    if (req.body.imageColors) {
+      try {
+        productData.imageColors = JSON.parse(req.body.imageColors);
+      } catch (e) {
+        // Fallback to empty if parse failed
+        productData.imageColors = [];
       }
     }
     
@@ -408,6 +437,8 @@ router.post('/products/bulk-import', adminAuth, upload.single('file'), async (re
                 price: parseFloat(obj.price),
                 description: obj.description || '',
                 category: obj.category || 'Uncategorized',
+                material: obj.material || '',
+                color: obj.color || '',
                 stock: parseInt(obj.stock) || 0,
                 featured: obj.featured === 'true'
             });
@@ -431,10 +462,10 @@ router.post('/products/bulk-import', adminAuth, upload.single('file'), async (re
 router.get('/products/export', adminAuth, async (req, res) => {
   try {
     const products = await Product.find({});
-    let csv = 'name,price,category,stock,featured,description\n';
+    let csv = 'name,price,category,material,color,stock,featured,description\n';
     
     products.forEach(p => {
-        csv += `${p.name},${p.price},${p.category},${p.stock},${p.featured},"${p.description.replace(/"/g, '""')}"\n`;
+        csv += `${p.name},${p.price},${p.category},${p.material || ''},${p.color || ''},${p.stock},${p.featured},"${p.description.replace(/"/g, '""')}"\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv');

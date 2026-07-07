@@ -27,7 +27,8 @@ router.post('/', auth, async (req, res) => {
       itemsWithPrices.push({
         product: item.product,
         quantity: item.quantity,
-        price: product.price
+        price: product.price,
+        color: item.color || ''
       });
     }
     
