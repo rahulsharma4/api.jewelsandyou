@@ -5,6 +5,8 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Contact = require('../models/Contact');
+const Newsletter = require('../models/Newsletter');
+const SiteSettings = require('../models/SiteSettings');
 const { adminAuth } = require('../middleware/auth');
 const { applyDynamicPrices } = require('../utils/priceCalculator');
 
@@ -153,12 +155,38 @@ router.put('/products/:id', adminAuth, upload.array('images', 5), async (req, re
   }
 });
 
+// Toggle product featured status
+router.put('/products/:id/featured', adminAuth, async (req, res) => {
+  try {
+    const { featured } = req.body;
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { featured },
+      { new: true }
+    );
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Delete product
 router.delete('/products/:id', adminAuth, async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get newsletter subscribers
+router.get('/newsletters', adminAuth, async (req, res) => {
+  try {
+    const subscribers = await Newsletter.find().sort({ createdAt: -1 });
+    res.json(subscribers);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
