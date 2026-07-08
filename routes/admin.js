@@ -60,7 +60,7 @@ router.patch('/products/:id/stock', adminAuth, async (req, res) => {
 });
 
 // Create product
-router.post('/products', adminAuth, upload.array('images', 5), async (req, res) => {
+router.post('/products', adminAuth, upload.array('images', 15), async (req, res) => {
   try {
     console.log('\n🔍 ADMIN PRODUCT CREATION');
     console.log('='.repeat(30));
@@ -99,7 +99,7 @@ router.post('/products', adminAuth, upload.array('images', 5), async (req, res) 
 });
 
 // Update product
-router.put('/products/:id', adminAuth, upload.array('images', 5), async (req, res) => {
+router.put('/products/:id', adminAuth, upload.array('images', 15), async (req, res) => {
   try {
     console.log('\n🔍 ADMIN PRODUCT UPDATE');
     console.log('='.repeat(30));
