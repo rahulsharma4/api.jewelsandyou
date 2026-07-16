@@ -18,11 +18,15 @@ const orderSchema = new mongoose.Schema({
   paymentMethod: { type: String, required: true },
   paymentInfo: {
     paymentIntentId: String,
+    razorpayOrderId: String,
+    razorpaySignature: String,
     status: String,
     method: { type: String, default: 'card' }
   },
   shippingMethod: { type: String, required: true },
   shippingCost: { type: Number, default: 0 },
+  couponId: { type: mongoose.Schema.Types.ObjectId, ref: 'Coupon' },
+  discountAmount: { type: Number, default: 0 },
   subtotal: { type: Number, required: true },
   total: { type: Number, required: true },
   status: { type: String, enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'pending' },

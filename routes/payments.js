@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
-const stripeService = require('../services/stripeService');
+const razorpayService = require('../services/razorpayService');
 const User = require('../models/User');
 const Order = require('../models/Order');
 
-// Create payment intent
-router.post('/create-payment-intent', auth, async (req, res) => {
+// Create payment order
+router.post('/create-order', auth, async (req, res) => {
   try {
-    const { amount, currency = 'usd', orderId, items } = req.body;
+    const { amount, currency = 'INR', receipt } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ 
@@ -17,21 +17,13 @@ router.post('/create-payment-intent', auth, async (req, res) => {
       });
     }
 
-    const metadata = {
-      orderId: orderId || 'unknown',
-      userId: req.user.id,
-      items: JSON.stringify(items || [])
-    };
-
-    const result = await stripeService.createPaymentIntent(amount, currency, metadata);
+    const result = await razorpayService.createOrder(amount, currency, receipt);
     
     if (result.success) {
       res.json({
         success: true,
-        clientSecret: result.clientSecret,
-        paymentIntentId: result.paymentIntentId,
-        amount: result.amount,
-        currency: result.currency
+        order: result.order,
+        key: process.env.RAZORPAY_KEY_ID
       });
     } else {
       res.status(400).json({
@@ -40,315 +32,77 @@ router.post('/create-payment-intent', auth, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Payment intent creation error:', error);
+    console.error('Order creation error:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Payment processing failed' 
+      message: 'Order creation failed' 
     });
   }
 });
 
-// Confirm payment
-router.post('/confirm-payment', auth, async (req, res) => {
+// Verify payment signature
+router.post('/verify-payment', auth, async (req, res) => {
   try {
-    const { paymentIntentId } = req.body;
+    const { 
+      razorpay_order_id, 
+      razorpay_payment_id, 
+      razorpay_signature,
+      orderId 
+    } = req.body;
     
-    if (!paymentIntentId) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ 
         success: false,
-        message: 'Payment intent ID required' 
+        message: 'Incomplete payment details' 
       });
     }
 
-    const result = await stripeService.confirmPaymentIntent(paymentIntentId);
+    const verification = razorpayService.verifySignature(
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature
+    );
     
-    if (result.success) {
-      res.json({
-        success: true,
-        status: result.status,
-        amount: result.amount,
-        currency: result.currency,
-        paymentIntent: result.paymentIntent
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Payment confirmation error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Payment confirmation failed' 
-    });
-  }
-});
-
-// Create customer
-router.post('/create-customer', auth, async (req, res) => {
-  try {
-    const { email, name } = req.body;
-    
-    if (!email || !name) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Email and name required' 
-      });
-    }
-
-    const result = await stripeService.createCustomer(email, name, {
-      userId: req.user.id
-    });
-    
-    if (result.success) {
-      // Save customer ID to user profile
-      await User.findByIdAndUpdate(req.user.id, {
-        stripeCustomerId: result.customerId
-      });
-
-      res.json({
-        success: true,
-        customerId: result.customerId
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Customer creation error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Customer creation failed' 
-    });
-  }
-});
-
-// Get customer payment methods
-router.get('/payment-methods', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    
-    if (!user.stripeCustomerId) {
-      return res.json({
-        success: true,
-        paymentMethods: []
-      });
-    }
-
-    const result = await stripeService.getCustomerPaymentMethods(user.stripeCustomerId);
-    
-    if (result.success) {
-      res.json({
-        success: true,
-        paymentMethods: result.paymentMethods
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Get payment methods error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to retrieve payment methods' 
-    });
-  }
-});
-
-// Create setup intent for saving payment methods
-router.post('/setup-intent', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    
-    if (!user.stripeCustomerId) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Customer not found. Please create a customer first.' 
-      });
-    }
-
-    const result = await stripeService.createSetupIntent(user.stripeCustomerId);
-    
-    if (result.success) {
-      res.json({
-        success: true,
-        clientSecret: result.clientSecret,
-        setupIntentId: result.setupIntentId
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Setup intent creation error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Setup intent creation failed' 
-    });
-  }
-});
-
-// Create refund
-router.post('/refund', auth, async (req, res) => {
-  try {
-    const { paymentIntentId, amount, reason = 'requested_by_customer' } = req.body;
-    
-    if (!paymentIntentId) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Payment intent ID required' 
-      });
-    }
-
-    const result = await stripeService.createRefund(paymentIntentId, amount, reason);
-    
-    if (result.success) {
-      res.json({
-        success: true,
-        refundId: result.refundId,
-        amount: result.amount,
-        status: result.status
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Refund creation error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Refund creation failed' 
-    });
-  }
-});
-
-// Get payment intent details
-router.get('/payment-intent/:id', auth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const result = await stripeService.getPaymentIntent(id);
-    
-    if (result.success) {
-      res.json({
-        success: true,
-        paymentIntent: result.paymentIntent,
-        status: result.status,
-        amount: result.amount,
-        currency: result.currency
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Get payment intent error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to retrieve payment intent' 
-    });
-  }
-});
-
-// Get account balance (admin only)
-router.get('/balance', auth, async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ 
-        success: false,
-        message: 'Admin access required' 
-      });
-    }
-
-    const result = await stripeService.getAccountBalance();
-    
-    if (result.success) {
-      res.json({
-        success: true,
-        balance: result.balance,
-        available: result.available,
-        pending: result.pending
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Get balance error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to retrieve balance' 
-    });
-  }
-});
-
-// Stripe webhook endpoint
-router.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
-  try {
-    const sig = req.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    
-    let event;
-    
-    try {
-      event = stripeService.verifyWebhookSignature(req.body, sig, endpointSecret);
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    const Order = require('../models/Order');
-    
-    // Handle the event
-    switch (event.event.type) {
-      case 'payment_intent.succeeded':
-        const paymentIntent = event.event.data.object;
-        console.log('💰 Payment succeeded:', paymentIntent.id);
-        
-        // Update order status in database using paymentIntentId
-        await Order.findOneAndUpdate(
-          { 'paymentInfo.paymentIntentId': paymentIntent.id },
+    if (verification.success) {
+      // Update order status in database if orderId is provided
+      if (orderId) {
+        await Order.findByIdAndUpdate(
+          orderId,
           { 
             'paymentInfo.status': 'succeeded',
-            status: 'processing' // Match the enum in Order.js (lower case)
+            'paymentInfo.paymentIntentId': razorpay_payment_id,
+            'paymentInfo.razorpayOrderId': razorpay_order_id,
+            'paymentInfo.razorpaySignature': razorpay_signature,
+            'paymentInfo.method': 'razorpay',
+            status: 'processing'
           }
         );
-        break;
-      case 'payment_intent.payment_failed':
-        const failedIntent = event.event.data.object;
-        console.log('❌ Payment failed:', failedIntent.id);
-        
-        await Order.findOneAndUpdate(
-          { 'paymentInfo.paymentIntentId': failedIntent.id },
+      }
+
+      res.json({
+        success: true,
+        message: 'Payment verified successfully'
+      });
+    } else {
+      // Payment failed signature verification
+      if (orderId) {
+        await Order.findByIdAndUpdate(
+          orderId,
           { 'paymentInfo.status': 'failed' }
         );
-        break;
-      default:
-        console.log(`Unhandled event type ${event.event.type}`);
+      }
+      res.status(400).json({
+        success: false,
+        message: 'Invalid signature'
+      });
     }
-
-    res.json({received: true});
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Payment verification error:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Webhook processing failed' 
+      message: 'Payment verification failed' 
     });
   }
 });
 
 module.exports = router;
-

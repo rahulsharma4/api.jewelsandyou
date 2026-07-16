@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 const emailService = require('../services/emailService');
-
+const { generateInvoice } = require('../services/invoiceService');
 const { applyDynamicPrices } = require('../utils/priceCalculator');
 
 // Create order
@@ -168,6 +168,26 @@ router.get('/:id/tracking', auth, async (req, res) => {
     res.json(trackingInfo);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Generate and download invoice PDF
+router.get('/:id/invoice', auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('items.product');
+    
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (order.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice-${order._id}.pdf`);
+    
+    await generateInvoice(order, res);
+  } catch (error) {
+    console.error('Invoice generation error:', error);
+    res.status(500).json({ message: 'Failed to generate invoice' });
   }
 });
 
