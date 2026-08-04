@@ -13,6 +13,7 @@ const generateInvoice = async (order, res) => {
       // Add company logo or header
       doc.fontSize(20).text('Jewels And You', 50, 45, { align: 'right' });
       doc.fontSize(10).text('Invoice', 50, 70, { align: 'right' });
+      doc.fontSize(8).text('BIS Hallmarked & Certified Luxury Jewelry', 50, 83, { align: 'right' });
 
       // Add order details
       doc.fontSize(12).text(`Order ID: ${order._id}`, 50, 100);
@@ -75,8 +76,15 @@ const generateInvoice = async (order, res) => {
       doc.text(`Rs. ${order.shippingCost.toLocaleString('en-IN')}`, 460, y, { width: 90, align: 'right' });
       y += 20;
 
+      const gstAmount = Math.round((order.total || 0) * (3 / 103));
+      doc.font('Helvetica');
+      doc.text('3% GST (Included):', 340, y, { width: 120, align: 'right' });
+      doc.text(`Rs. ${gstAmount.toLocaleString('en-IN')}`, 460, y, { width: 90, align: 'right' });
+      y += 20;
+
+      doc.font('Helvetica-Bold');
       doc.fontSize(12);
-      doc.text('Total:', 370, y, { width: 90, align: 'right' });
+      doc.text('Total Payable:', 340, y, { width: 120, align: 'right' });
       doc.text(`Rs. ${order.total.toLocaleString('en-IN')}`, 460, y, { width: 90, align: 'right' });
 
       // Add footer

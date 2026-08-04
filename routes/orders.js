@@ -28,7 +28,8 @@ router.post('/', auth, async (req, res) => {
         product: item.product,
         quantity: item.quantity,
         price: product.price,
-        color: item.color || ''
+        color: item.color || '',
+        size: item.size || ''
       });
     }
     
@@ -188,6 +189,56 @@ router.get('/:id/invoice', auth, async (req, res) => {
   } catch (error) {
     console.error('Invoice generation error:', error);
     res.status(500).json({ message: 'Failed to generate invoice' });
+  }
+});
+
+// Cancel an order
+router.post('/:id/cancel', auth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (order.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ message: `Cannot cancel an order that is already ${order.status}` });
+    }
+
+    order.status = 'cancelled';
+    order.cancelReason = reason || 'Cancelled by customer';
+    await order.save();
+
+    await order.populate('items.product');
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Request return for a delivered order
+router.post('/:id/return', auth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (order.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    if (order.status !== 'delivered') {
+      return res.status(400).json({ message: 'Only delivered orders can be requested for return' });
+    }
+
+    order.status = 'return_requested';
+    order.returnReason = reason || 'Return requested by customer';
+    await order.save();
+
+    await order.populate('items.product');
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 

@@ -11,7 +11,8 @@ const userSchema = new mongoose.Schema({
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
     quantity: { type: Number, default: 1 },
     price: { type: Number, required: true },
-    color: { type: String }
+    color: { type: String },
+    size: { type: String }
   }],
   addresses: [{
     name: String,

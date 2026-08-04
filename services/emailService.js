@@ -41,7 +41,7 @@ class EmailService {
           <h3>Order Details</h3>
           <p><strong>Order ID:</strong> ${order._id}</p>
           <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-          <p><strong>Total Amount:</strong> $${order.total.toFixed(2)}</p>
+          <p><strong>Total Amount:</strong> ₹${order.total.toLocaleString('en-IN')}</p>
           <p><strong>Status:</strong> ${order.status}</p>
         </div>
 
@@ -50,7 +50,7 @@ class EmailService {
           ${order.items.map(item => `
             <div style="border-bottom: 1px solid #eee; padding: 10px 0;">
               <p><strong>${item.product.name}</strong></p>
-              <p>Quantity: ${item.quantity} | Price: $${item.price.toFixed(2)}</p>
+              <p>Quantity: ${item.quantity} | Price: ₹${item.price.toLocaleString('en-IN')}</p>
             </div>
           `).join('')}
         </div>

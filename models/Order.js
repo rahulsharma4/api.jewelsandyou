@@ -6,7 +6,8 @@ const orderSchema = new mongoose.Schema({
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
-    color: String
+    color: String,
+    size: String
   }],
   shippingAddress: {
     name: String,
@@ -29,8 +30,10 @@ const orderSchema = new mongoose.Schema({
   discountAmount: { type: Number, default: 0 },
   subtotal: { type: Number, required: true },
   total: { type: Number, required: true },
-  status: { type: String, enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
-  trackingNumber: String
+  status: { type: String, enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'return_requested', 'returned'], default: 'pending' },
+  trackingNumber: String,
+  cancelReason: String,
+  returnReason: String
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

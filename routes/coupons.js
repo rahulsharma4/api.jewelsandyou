@@ -86,4 +86,14 @@ router.delete('/:id', auth, adminAuth, async (req, res) => {
   }
 });
 
+// Update coupon (Admin only)
+router.put('/:id', auth, adminAuth, async (req, res) => {
+  try {
+    const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, coupon });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
